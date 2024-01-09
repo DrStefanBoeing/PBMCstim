@@ -1,0 +1,115 @@
+"---
+format:
+    html:
+        output-ext: "htm"
+---
+
+## CellRnager Commands
+In this section the CellRanger commands for the alignment step are documented.
+
+```{bash, eval = FALSE}
+ml Singularity/3.11.3
+singularity shell --bind  /nemo:/nemo,/camp:/camp /nemo/stp/babs/working/boeings/singularity_images/r431.ubuntu.22.04.sif;
+R
+```
+
+
+```{r, eval = FALSE}
+################################################################################
+## R-function to make cellranger count commands                               ##
+
+# cmdVec <- "ml CellRanger/5.0.0-bcl2fastq-2.20.0"
+cmdVec <- "ml  CellRanger/7.1.0"
+
+# Chicken
+# transcriptome <- "/camp/svc/reference/Genomics/10x/10x_transcriptomes/Gallus_gallus-6.0-release-97"
+
+# human
+# only this 2020 reference transcriptome works with cellranger 7.1.0
+transcriptome <- "/nemo/svc/reference/Genomics/10x/10x_transcriptomes/refdata-gex-GRCh38-2020-A"
+
+folderVec <- c(
+    "/nemo/stp/sequencing/outputs/babs/data/bonfantip/roberta.ragazzini/SC23353/primary_data/231124_A01366_0488_BHTVNFDSX7/fastq"
+)
+
+
+for (i in length(folderVec)){
+    filenames <- list.files(folderVec[i], full.names = TRUE)
+    tag <- gsub(paste0(folderVec[i], "/"), "", filenames)
+    tag <- sapply(tag, function(x) unlist(strsplit(x, "_"))[1])
+
+    dfTemp <- data.frame(
+        folder = rep(folderVec[i], length(tag)),
+        sampleID = tag
+    )
+    row.names(dfTemp) <- NULL
+    dfTemp <- unique(dfTemp)
+
+    if (i ==1){
+        dfRes <- dfTemp
+    } else {
+        dfRes <- rbind(dfRes, dfTemp)
+    }
+}
+
+
+## name the list
+
+## Make a folder list for each sample ##
+
+## First, get all sample IDs
+
+allIDs <- sort(unique(dfRes$sampleID))
+
+for (i in 1:length(allIDs)){
+    sampleID <- allIDs[i]
+
+    dfTemp <- dfRes[dfRes$sampleID == sampleID,]
+
+    folderString <- paste0(dfTemp$folder, collapse = ",")
+
+    cmd <- paste0(
+        'sbatch --time=72:00:00 --wrap "cellranger count --id=',
+        sampleID,
+        ' --transcriptome=',
+        transcriptome,
+        ' --fastqs=',
+        folderString,
+        ' --sample=',
+        sampleID,
+        '" --job-name="'
+        ,sampleID,
+        '" -c 16 --mem-per-cpu=7000 -o CR.',sampleID,'.slurm >> commands.txt'
+    )
+
+    cmdVec <- c(
+        cmdVec,
+        cmd
+    )
+
+}
+
+## write to file assuming the script is run in the project workdir
+if (!dir.exists("../../../../FASTQ_files")){
+    dir.create("../../../../FASTQ_files")
+}
+
+
+sink("../../../../FASTQ_files/cellranger.commands.sh")
+
+for (i in 1:length(cmdVec)){
+    cat(cmdVec[i]); cat("\n")
+}
+
+sink()
+```
+
+### Command summary
+```{R, eval = TRUE}
+FN <- "../../../../FASTQ_files/cellranger.commands.sh"
+
+if (file.exists(FN)){
+    cat(readLines(FN), sep = "\n")
+}
+
+```"

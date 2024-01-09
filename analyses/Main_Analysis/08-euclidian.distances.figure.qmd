@@ -1,0 +1,63 @@
+---
+format:
+    html:
+        embed-rmd: true
+        output-ext: "htm"
+---
+
+### Check Accuracy UMAP Distances
+```{r, eval=T, echo=F, results=FALSE, message = FALSE, warning = FALSE}
+if (file.exists("renv.lock")){
+    renv::restore(prompt = FALSE)
+}
+
+FN <- "../../../../workdir/temp/temp.workspace.RData"
+if (file.exists(FN)){
+  load(FN)
+} else {
+  exit("No workspace found. Please run the previous step first and make sure it finished successfully.")
+}
+
+library(dplyr)
+```
+
+<!-- Set PArameters Module -->
+<!-- Set the chnkPrefix to make all chunks unique in the overall folder -->
+```{r partB_euclidian_distances, echo=TRUE, eval=TRUE, warning=FALSE}
+chnkPrefix <- "partB.pca.plots."
+VersionPdfExt <- VersionPdfExt <- paste0(".",chnkPrefix,"V", gsub("-", "", Sys.Date()), ".pdf")
+
+```
+
+
+
+
+The sleepwalk tool will provide the euclidean distances between individual cells. This will help you to determine clustering accuracy. Find more information <a href="https://anders-biostat.github.io/sleepwalk/" target = "_blank">here</a>. 
+<div align="center">
+```{r Plot_umap_sleepwalk, echo=TRUE, eval=TRUE, warning=FALSE, results="asis"}
+library(sleepwalk)
+sleepwalk( 
+  OsC@reductions$umap@cell.embeddings, 
+  OsC@reductions$pca@cell.embeddings,
+  saveToFile=paste(Obio@parameterList$outputDir,"sleepwalk.UMAP.html",sep='')
+)
+htmltools::includeHTML(paste(Obio@parameterList$outputDir,"sleepwalk.UMAP.html",sep=''))
+  
+          
+```
+</div>
+
+```{r, eval=TRUE, echo=F, results=FALSE, message = FALSE, warning = FALSE}
+tempDir <- "../../../../workdir/temp/"
+
+if (!dir.exists(tempDir)){
+  dir.create(tempDir, recursive = T)
+}
+
+if (exists("whiteListWorkspace")){
+    rm(list = setdiff(ls(), whiteListWorkspace))
+}
+
+FN <- "../../../../workdir/temp/temp.workspace.RData"
+save.image(FN)
+```

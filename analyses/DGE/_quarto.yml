@@ -1,0 +1,63 @@
+project:
+  type: website
+  output-dir: ../../../../html_local/
+
+  render:
+    - DGE_Analysis.qmd
+    - DGE_chapter_1_DGE_calc_and_celltype_plots.qmd
+    - DGE_chapter_2_tables.qmd
+    - DGE_chapter_3_MA_and_violin_plots.qmd
+    - DGE_chapter_4_enrichment_analysis.qmd
+
+editor:
+  markdown:
+    references:
+      location: block
+
+format: 
+    html:
+      theme: minty
+      code-fold: true
+      highlight-style: arrow
+      code-line-numbers: true
+      code-copy: true
+      df-print: paged
+      highlight: default
+      toc: true
+      toc-depth: 5
+      toc-title: Contents
+      toc-location: left
+      embed-resources: true
+      output-ext: "html"
+
+
+
+website:
+  title: "Bioinformatics Analysis Report"
+  favicon: "./src/style/src/images/logo.ico"
+  sidebar:
+    logo: ./src/style/src/images/CRICK_Logotype_black_RGB.jpg
+    style: "docked"
+    search: true
+    contents:
+      - section: "Overview"
+        contents:
+          - file: DGE_Analysis.html
+            text: "Analysis Overview"
+      - section: "Main DGE Analysis"
+        contents:
+          - file: DGE_chapter_1_DGE_calc_and_celltype_plots.htm
+            text: "DGE Calculations and Cell Type Plots"
+          - file: DGE_chapter_2_tables.htm
+            text: "Tables"
+          - file: DGE_chapter_3_MA_and_violin_plots.htm
+            text: "MA and Volcano Plots"
+      - section: "Enrichment Analysis"
+        contents:
+          - file: DGE_chapter_4_enrichment_analysis.htm
+            text: "Enrichment Analysis"
+      #- section: "Heatmaps"
+      #  contents:
+      #    - file: DGE_chapter_5_create_heatmaps.htm
+      #      text: "Summary Heatmaps"
+

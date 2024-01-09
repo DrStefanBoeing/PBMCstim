@@ -1,0 +1,163 @@
+---
+format:
+    html:
+        embed-rmd: true
+        output-ext: "htm"
+---
+
+### Highlight Potential Doublets
+```{r, eval=T, echo=F, results=FALSE, message = FALSE, warning = FALSE}
+if (file.exists("renv.lock")){
+    renv::restore(prompt = FALSE)
+}
+
+FN <- "../../../../workdir/temp/temp.workspace.RData"
+if (file.exists(FN)){
+  load(FN)
+} else {
+  exit("No workspace found. Please run the previous step first and make sure it finished successfully.")
+}
+
+library(dplyr)
+```
+
+<!-- Set PArameters Module -->
+<!-- Set the chnkPrefix to make all chunks unique in the overall folder -->
+```{r partB_doublet_estimates, echo=TRUE, eval=TRUE, warning=FALSE}
+chnkPrefix <- "partB.doublet."
+VersionPdfExt <- VersionPdfExt <- paste0(".",chnkPrefix,"V", gsub("-", "", Sys.Date()), ".pdf")
+
+```
+
+
+
+```{r doublet-data, echo=TRUE, eval=TRUE, warning=FALSE, results=FALSE, message = FALSE}
+
+
+
+plotList <- list()
+chnkVec <- as.vector(NULL, mode = "character")
+dfTemp <- OsC@meta.data
+
+pos <- grep("DF_Classification", names(dfTemp))
+
+if (length(pos) > 0){
+
+  ## First make variation plot for integrated samples, than for all individual samples separately
+  tag <- "Doublet_plot"
+  
+  dfTemp$DF_Classification <- factor(dfTemp$DF_Classification, levels = sort(unique(dfTemp$DF_Classification)))
+
+
+  
+  #dotsize <- round(7500/nrow(dfTemp),1)
+  # dotsize <- 0.3
+
+
+
+dotsize  = 1
+if (nrow(dfTemp) > 10000){
+   dotsize  = 0.75
+ } else if (nrow(dfTemp) > 20000){
+   dotsize = 0.5
+ } else if (nrow(dfTemp) > 50000){
+   dotsize = 0.25
+}
+  
+  colVec <- c("black", "red")
+  names(colVec) <- c("Singlet", "Doublet")
+  
+  colVec <- colVec[unique(dfTemp$DF_Classification)]
+  
+  plotList[[tag]] <- ggplot2::ggplot(dfTemp, ggplot2::aes(UMAP_1, UMAP_2, color=DF_Classification)
+          )+ ggrastr::rasterize(ggplot2::geom_point( 
+              shape = 16,
+              size = as.numeric(dotsize), dpi = rasterDpi)
+          ) + ggplot2::xlab("UMAP1") + ggplot2::ylab("UMAP2"
+          ) + ggplot2::theme_bw(
+          )  +  ggplot2::theme(
+              axis.text.y   = ggplot2::element_text(size=8),
+              axis.text.x   = ggplot2::element_text(size=8),
+              axis.title.y  = ggplot2::element_text(size=8),
+              axis.title.x  = ggplot2::element_text(size=8),
+              axis.line = ggplot2::element_line(colour = "black"),
+              panel.border = ggplot2::element_rect(colour = "black", fill=NA, size=1),
+              plot.title = ggplot2::element_text(hjust = 0.5, size = 12)
+          ) + ggplot2::ggtitle("Potential Doublets"
+          ) + ggplot2::scale_color_manual(values=colVec
+          ) 
+  
+  #+ xlim(minX, maxX) + ylim(minY, maxY)  
+      
+      
+      
+              ## Save to file ##
+              FNbase <- paste0("DoubletFinderAll", VersionPdfExt)
+              FN <- paste0(Obio@parameterList$reportFigDir, FNbase)
+              FNrel <- paste0("report_figures/", FNbase)
+              
+             
+              pdf(FN)
+              print(plotList[[tag]])
+              dev.off()
+              
+              
+              
+              ## Create R markdown chunk ##
+              figLegend <- paste0(
+                  '**Figure ', 
+                  figureCount, 
+                  '**: Figure depicting the location of potential doublets in PCA components 1 and 2. Download a pdf of this figure <a href="',FNrel,'" target="_blank">here</a>. '
+              )
+              
+              figureCount <- figureCount + 1 
+              
+              NewChnk <- paste0(
+                  "#### Doublets All Timepoints", 
+                  "\n```{r ", tag, ", results='asis', echo=F, eval=TRUE, warning=FALSE, fig.cap='",
+                  figLegend,"'}\n",
+                  "\n",
+                  "\n print(plotList[['",tag,"']])",
+                  "\n cat(  '\n')",
+                  "\n\n\n```\n"   
+              )
+              
+              chnkVec <- c(
+                  chnkVec,
+                  NewChnk
+              )
+}
+
+if (length(plotList) > 3){
+    tabVar <- ".tabset .tabset-fade .tabset-dropdown"
+} else {
+    tabVar <- ".tabset .tabset-fade .tabset-pills"
+}
+```
+
+
+This analyis gives an indication of which cells MIGHT be doublets. Chris McGinnis <a href="https://github.com/chris-mcginnis-ucsf/DoubletFinder" target="_blank">DoubletFinder</a> package is used to identify potential doublets.
+
+:::: {.panel-tabset .nav-pills}
+```{r doublet-plot, echo=TRUE, eval=TRUE, warning=FALSE, results="asis"}
+## plot list will be integrated in full figure ##
+if (length(pos) > 0){
+  cat(paste(knitr::knit(text = chnkVec, quiet = T), collapse = '\n'))
+}
+```
+::::
+
+```{r, eval=TRUE, echo=F, results=FALSE, message = FALSE, warning = FALSE}
+tempDir <- "../../../../workdir/temp/"
+
+if (!dir.exists(tempDir)){
+  dir.create(tempDir, recursive = T)
+}
+
+if (exists("whiteListWorkspace")){
+    rm(list = setdiff(ls(), whiteListWorkspace))
+}
+
+FN <- "../../../../workdir/temp/temp.workspace.RData"
+save.image(FN)
+```

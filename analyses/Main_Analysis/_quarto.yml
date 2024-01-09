@@ -1,0 +1,129 @@
+project:
+  type: website
+  output-dir: ../../../../html_local/
+
+# Note: Sections that have been rendered already can be commented out in the render: section.
+# Note: All chapters, except for Main_Analysis.qmd are rendered with the .htm extension. This is to distinguish
+#       them from the top-level Main_Analysis.html files.
+
+# Annotation below
+#  #- Part of this analysis, but chapter has been created already.
+#  ##- Not part of this analysis.
+
+  render:
+    - Main_Analysis.qmd
+    - 01-create.load.or.update.biologic.data.object.qmd
+    - 02-retrieve.reference.gene.sets.qmd
+    ## - 03B-seuratV5.sketch.create.integrated.seurat.object.qmd # Use this for harmony
+    - 03B-seuratV5.sketch.create.integrated.seurat.object.cca.qmd
+    - 04-create.variation.plots.qmd
+    - 05-create.pca.plots.qmd
+    - 06-calculate.average.expression.qmd
+    - 07-plot.pca.and.tsne.results.qmd
+    - 08-euclidian.distances.figure.qmd
+    - 09-doublet.estimation.plots.qmd
+    - 10-cell.cycle.phase.plots.qmd
+    - 11-Ncell.barchart.plots.qmd
+    ## - B133.timeseries.area.plot.qmd
+    - 12-AUC.cat.enrichments.qmd
+    - 13-linear.regression.data.prep.qmd
+    - 14A-heatmaps.qmd
+    - 14B-dotplots.qmd
+    - 14C-violinplots.qmd
+    - save.results.and.cleanup.environment.qmd
+
+editor:
+  markdown:
+    references:
+      location: block
+      prefix: "Main_Analysis_"
+
+format: 
+    html:
+      theme: minty
+      code-fold: true
+      highlight-style: arrow
+      code-line-numbers: true
+      code-copy: true
+      df-print: paged
+      highlight: default
+      toc: true
+      toc-depth: 5
+      toc-title: Contents
+      toc-location: left
+      embed-resources: true
+      output-ext: "html"
+
+
+
+website:
+  title: "Bioinformatics Analysis Report"
+  favicon: "./src/style/src/images/logo.ico"
+  sidebar:
+    logo: ./src/style/src/images/CRICK_Logotype_black_RGB.jpg
+    style: "docked"
+    search: true
+    contents:
+      - section: "Overview"
+        contents:
+          - file: Main_Analysis.html
+            text: "Analysis Overview"
+      - section: "Main Analysis"
+        contents:
+          - section: "Setup and Data Processing"
+            contents:
+              - file: 01-create.load.or.update.biologic.data.object.htm
+                text: "Set Parameters"
+              #- file: 01-set.parameters.htm
+              #  text: "Set Parameters"
+              - file: 02-retrieve.reference.gene.sets.htm
+                text: "Retrieve reference"
+              # - file: 03-create.integrated.seurat.object.htm
+              #  text: "Create integrated Seurat object"
+              - file: 03B-seuratV5.sketch.create.integrated.seurat.object.cca.qmd
+                text: "Create integrated Seurat object (Seurat V5)"
+          #3- section: "Variation  Plots"
+          #  contents:
+          #    - file: 04-create.variation.plots.htm
+          #      text: "Variation plots"
+          - section: "PCA and UMAP Plots"
+            contents:
+              - file: 05-create.pca.plots.htm
+                text: "PCA Plots"
+              - file: 06-calculate.average.expression.htm
+                text: "Calculate average expression"
+              - file: 07-plot.pca.and.tsne.results.htm
+                text: "PCA and tSNE Results"
+              - file: 08-euclidian.distances.figure.htm
+                text: "Euclidian Distances Between Cells"
+              - file: 09-doublet.estimation.plots.htm
+                text: "Doublet Estimation Plots"
+              - file: 10-cell.cycle.phase.plots.htm
+                text: "Cell Cycle Phase Plots"
+          - section: "Cell Count Examination"
+            contents:
+              - file: 11-Ncell.barchart.plots.htm
+                text: "Ncell Barchart Plots"
+             # - file: B133.timeseries.area.plot.htm
+             #   text: "Ncell Barchart Plots"
+          - section: "Gene Category Examination"
+            contents:
+              - file: 12-AUC.cat.enrichments.htm
+                text: "AUC Category Enrichments"
+          - section: "Cluster Marker Gene Examination"
+            contents:
+              - file: 13-linear.regression.data.prep.htm
+                text: "Linear Regression"
+          - section: "Heatmaps, Dotplots, Violinplots"
+            contents:
+            - file: 14A-heatmaps.htm
+              text: "Heatmaps"
+            - file: 14B-dotplots.htm
+              text: "Dotplots"
+            - file: 14C-violinplots.htm
+              text: "Violinplots"
+
+
+
+
+

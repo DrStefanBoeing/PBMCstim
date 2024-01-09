@@ -1,0 +1,168 @@
+---
+format:
+    html:
+        embed-rmd: true
+        output-ext: "htm"
+---
+
+## Tables
+
+```{r, eval=TRUE, echo=F, results=FALSE, message = FALSE, warning = FALSE}
+FN <- "../../../../workdir/temp/temp.workspace.RData"
+if (file.exists(FN)){
+  load(FN)
+} else {
+  exit("No workspace found. Please run the previous step first and make sure it finished successfully.")
+}
+
+```
+
+
+
+```{r create_focused_marker_list, eval=TRUE, echo=T, results=FALSE, message = FALSE, warning = FALSE}
+###############################################################################
+## Create topN marker gene list                                              ##
+
+n = 10
+
+dfSel <- dfLongMarker[dfLongMarker$markerRank <= n, ]
+
+clustVec <- unique(dfSel$clusterName)
+
+geneList <- list()
+
+for (i in 1:length(clustVec)){
+  geneVec <- sort(unique(dfSel[dfSel$clusterName == clustVec[i], "gene"]))
+  if (length(geneVec) > 0){
+    geneList[[clustVec[i]]] <- geneVec
+  }
+}
+
+## Create plot list
+if (!exists("HMgeneSelections")){
+  HMgeneSelections <- list()
+}
+
+HMgeneSelections[[paste0("Top_", n, "_Markers")]] <- geneList
+
+## Now transcription factors
+
+## Done creating top n marker gene list
+
+
+## Focused marker list
+markerList <- list()
+
+## Create focused marker list
+for (i in 1:length(DGEtagVec)){
+
+  ## Add to Excel workbook ##
+  dfOutput <-   Obio@dataTableList[[DGEtagVec[i]]]
+  orderVec <- names(dfOutput)
+  dfOutput[["gene_FeatureViewLink"]] <- paste0(
+      shinyURL,
+      "?gene=",
+      dfOutput$gene
+  )
+  orderVec <- orderVec[orderVec != "gene"]
+  orderVec <- c("gene", "gene_FeatureViewLink", orderVec)
+  dfOutput <- dfOutput[, orderVec]
+  class(dfOutput$gene_FeatureViewLink) <- c(class(dfOutput$gene_FeatureViewLink), "hyperlink")
+
+  ## Highlight logFCtwoSD
+  logFCtwoSD <- 2*sd(dfOutput[,grep("_logFC_", names(dfOutput))])
+  dfOutput[["DGE_Status"]] <- "Unchanged"
+  dfOutput[dfOutput[,grep("_logFC_", names(dfOutput))] > logFCtwoSD & dfOutput[,grep("_padj_", names(dfOutput))] < 0.05, "DGE_Status"] <- "Up"
+    dfOutput[dfOutput[,grep("_logFC_", names(dfOutput))] < -1 *logFCtwoSD & dfOutput[,grep("_padj_", names(dfOutput))] < 0.05, "DGE_Status"] <- "Down"
+
+  if (nrow(dfOutput[dfOutput$DGE_Status != "Unchanged",]) > 0){
+    dfOutput <- dfOutput[dfOutput$DGE_Status != "Unchanged",]
+  }
+
+  ## Highlight TFs
+  if (!is.null(Obio@dataTableList[["referenceList"]][["TFs"]])){
+    geneSet <- Obio@dataTableList[["referenceList"]][["TFs"]]
+    dfOutput[["Transcription_factor"]] <- ""
+    dfOutput[dfOutput$gene %in% geneSet, "Transcription_factor"] <- "+"
+  }
+
+
+
+  ## Sort based on logFCs
+  pos <- grep("logFC_", names(dfOutput))
+  if (length(pos) == 1){
+    dfOutput <- dfOutput[order(dfOutput[, pos], decreasing = T),]
+  }
+
+  upVec <- sort(unique(dfOutput[dfOutput$DGE_Status == "Up", "gene"]))
+  markerList[[DGEtagVec[i]]] <- NULL
+  #markerList[[DGEtagVec[i]]] <- list()
+  markerList[[paste0("Up_", DGEtagVec[i])]] <- upVec
+}
+
+## Remove all duplicated
+
+dups <- as.vector(NULL, mode = "character")
+
+for (i in 1:length(markerList)){
+  dups <- c(
+    dups,
+    markerList[[i]][!duplicated(markerList[[i]])]
+  )
+}
+
+dups <- unique(dups[duplicated(dups)])
+
+
+## Create plot list
+if (!exists("HMgeneSelections")){
+  HMgeneSelections <- list()
+}
+
+
+## Remove all duplicates from lists##
+for (i in 1:length(markerList)){
+  markerList[[i]] <- markerList[[i]][!(markerList[[i]] %in% dups)]
+}
+
+
+if (!exists("excelGeneList")){
+  excelGeneList <- list()
+}
+HMgeneSelections[["Up_dedup_marker_list"]] <- markerList
+excelGeneList[["Up_dedup_marker_list"]] <- markerList
+
+
+## filter by intensity (lg10intensity*logFC expression)
+markerListTF <- markerList
+TFgeneVec <- Obio@dataTableList[["referenceList"]][["TFs"]]
+for (i in 1:length(markerListTF)){
+  markerListTF[[i]] <- markerListTF[[i]][(markerListTF[[i]] %in% TFgeneVec)]
+}
+
+HMgeneSelections[["Up_dedup_markerTF_list"]] <- markerListTF
+excelGeneList[["Up_dedup_markerTF_list"]] <- markerList
+
+## Done creating focused marker list                                         ##
+###############################################################################
+
+###############################################################################
+## Print marker gene selections to file                                      ##
+
+# Ideal format: long: gene name | cluster marker | logFC | intensity | intensity * logFC | TF
+
+##                                                                           ##
+###############################################################################
+
+```
+```{r, eval=TRUE, echo=F, results=FALSE, message = FALSE, warning = FALSE}
+tempDir <- "../../../../workdir/temp/"
+
+if (!dir.exists(tempDir)){
+  dir.create(tempDir, recursive = T)
+}
+
+FN <- "../../../../workdir/temp/temp.workspace.RData"
+save.image(FN)
+```
+

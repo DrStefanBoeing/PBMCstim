@@ -1,0 +1,291 @@
+---
+format:
+    html:
+        output-ext: "html"
+---
+
+## Data Analysis Overview
+
+In this data analysis we use Seurat Version 5.
+
+* Table of Content
+  + [Analysis Overview](DGE_Marker_Analysis.html)
+    - [Chapter 1 Differential Gene Expression Calculations](01-set.parameters.htm)
+    - [Chapter 2 Retrieve Reference Gene Sets](02-retrieve.reference.gene.sets.htm)
+    - [Chapter 3 Integrative Analysis](03-create.integrated.seurat.object.htm)
+    - [Chapter 4 Variation Plots](04-create.variation.plots.htm)
+    - [Chapter PCA and UMAP](07-plot.pca.and.tsne.results.htm)
+    - [Chapter Euclidian Distances](08-euclidian.distances.figure.htm)
+    - [Chapter Cell Cycle Phase Plots](10-cell.cycle.phase.plots.htm)
+    - [Chapter Cell Barcharts](11-Ncell.barchart.plots.htm)
+    - [Chapter Category Enrichments](12-AUC.cat.enrichments.htm)
+    - [Chapter Cluster Characterization - Linear Regression](13-linear.regression.data.prep.htm)
+    - [Chapter Heatmaps](14A-heatmaps.htm)
+    - [Chapter Dotplots](14B-dotplots.htm)
+    - [Chapter Violinplots](14C-violinplots.htm)
+
+
+
+
+```{bash, eval=FALSE, echo=TRUE, results=FALSE, echo=FALSE}
+
+ml Singularity/3.11.3
+singularity shell --bind  /nemo:/nemo,/camp:/camp /nemo/stp/babs/working/boeings/singularity_images/r431.ubuntu.22.04.sif;
+R
+```
+
+```{r setup, include=FALSE, echo =FALSE}
+
+## This clearing  becomes necessary, in order to save the workspace between chapers. ##
+rm(list = ls())
+
+knitr::opts_chunk$set(
+    tidy = F,
+    tidy.opts = list(width.cutoff = 120),
+    message = FALSE,
+    warning = FALSE
+)
+```
+
+```{r, eval=TRUE, echo=F, results=F}
+# Footnote organiser based on: https://stackoverflow.com/questions/74632879/use-footnote-multiple-times-in-html-quarto
+#| echo: false
+
+gen_fn <- function(n, id) {
+  # n is number of footnote
+  # id is a unique id for that footnote
+  paste0('<a href="#',id, '" class="footnote-ref" role="doc-noteref" aria-expanded="false"><sup>', n, '</sup></a>')
+}
+
+# Usage:
+# Some example text for a footnote`r gen_fn(1, "fn1")`
+# Some example text for same footnote`r gen_fn(1, "fn1")
+
+```
+
+```{r, eval=TRUE, echo=F, results=F}
+###############################################################################
+##                                                                           ##
+if (!requireNamespace("remotes")){
+  install.packages("remotes")
+}
+
+
+if (!requireNamespace("renv")){
+  remotes::install_github("rstudio/renv")
+}
+
+if (!file.exists("renv.lock")){
+    renv::init(
+        bioconductor = TRUE
+    )
+} else {
+    renv::restore(prompt = FALSE)
+}
+
+## Done                                                                      ##
+###############################################################################
+```
+
+
+```{r, eval=FALSE, echo=F, results=F}
+## Update to Seurat 5 / 4.9.9
+## Installation needs to be seurat5_devel - otherwise cellcycle score won't work. Bug.
+# renv::install("mojaveazure/seurat-object@seurat5_devel")
+# renv::install("satijalab/seurat@seurat5")
+packageVersion("Seurat")
+```
+
+```{r, eval=TRUE, echo=F, results=F}
+## ggrasterize option
+rasterDpi <- 300
+
+## Set options to resume
+
+## Set to true if you want to use an already existing integration.
+resume <- FALSE
+
+SeuratFolder <- "../../../../workdir"
+pos <- grep("Seurat.Robj", list.files(SeuratFolder))
+if (length(pos) == 0){
+resume <- FALSE
+}
+
+if (resume){
+createNew <- FALSE
+} else {
+createNew <- TRUE
+}
+
+cwd <- paste0(here::here(),"/")
+tempWorkDir <- paste0(cwd, "../")
+
+## Load custom packages specific for this analysis ##
+#source("assets/R/scTools.r")
+#source("assets/R/SBwebtools.pckg.r")
+
+#renv::install("decusInLabore/biologicSeqTools")
+#renv::install("decusInLabore/biologicToolsSC")
+library(Seurat)
+library(biologicSeqTools2)
+library(biologicToolsSC)
+library(dplyr)
+
+## Make sure the correct future version (> 1.2) is installed
+#renv::install("https://cran.r-project.org/src/contrib/Archive/future/future_1.19.1.tar.gz")
+## Doublet Finder
+#renv::install("chris-mcginnis-ucsf/DoubletFinder")
+#renv::install("bioc::clusterProfiler")
+#renv::install("bioc::AUCell")
+#renv::install("YuLab-SMU/ggtree")
+
+upload.results.to.database <- TRUE
+save.chunk.intermediates <- TRUE
+
+
+###############################################################################
+##                                                                           ##
+## Set up project specific parameters                                         ##
+projectDir <- unlist(strsplit(getwd(), "scripts\\/"))[1]
+workdir <- paste0(projectDir, "workdir/")
+figureCount <- 1
+tableCount <- 1
+##                                                                           ##
+###############################################################################
+```
+
+<!-- Running Individual Modules in R -->
+<!-- For example rmarkdown::render("src/modules/settings/partB.set.parameters.Rmd", output_dir = "..") -->
+
+<!-- Essential 1: Set Analysis Parameters Chapter/Module (output required later) -->
+```{r child = '_01-laod.data.and.set.parameters.qmd', eval=FALSE, echo=F}
+```
+
+<!-- Optional 2: Retrieve Reference Genes from Database or Gmt file -->
+```{r child = '_02-load.or.define.gene.categories.qmd', eval=FALSE, echo=F}
+```
+
+Additional text regarding this particular analysis can be added here. For example:
+2023-10-09: Addition of abc def.
+
+<!-- Optional 6: (output required later): Create Integrated Seurat Object Chapter/Module -->
+```{r child = '_06-add.documentation.qmd', eval=FALSE, echo=F}
+```
+
+```{r create_report_params, eval=T, results="asis", echo=F}
+source("load.biologic.robj.R")
+
+## Get report details
+documentationParams <- list(
+
+    "title" = "Myc single-cell Analysis Seurat V5",
+    "subtitle" =  "Testdataset for Seurat V5",
+    "abstract" = "This is a test project for single-cell analysis with Seurat Version 5. ",
+    "additionalParagraph" = "First development cyle."
+
+)
+
+
+## Try to retrieve project data from db ##
+library(RMySQL)
+db.pwd2 <- "_asf_"
+db.user2 <- "asf"
+host2 <- "ms1.thecrick.org"
+projectParams <- documentationParams
+
+tryCatch({
+    dbDB = dbConnect(drv = RMySQL::MySQL(), user = db.user2, password = db.pwd2, host = host2, dbname = "asf");
+dfProposal =  dbGetQuery(dbDB, paste0("SELECT * FROM asf_proposals WHERE project_name ='",Obio@parameterList$lims.id,"'"));
+dbDisconnect(dbDB)
+  }, error = function(x) {
+    message("Project Database could not be reached or has no entry in Obio@parameterList$lims.id for this analysis.")
+
+})
+
+if (exists("dfProposal")){
+  if (nrow(dfProposal) == 1){
+      if (!is.na(dfProposal[1,"ProjectAlias"]) & dfProposal[1,"ProjectAlias"] != ""){
+          projectParams[["title"]] = paste0(dfProposal[1,"ProjectAlias"], " - ", dfProposal[1,"project_name"])
+      }
+
+      if (!is.na(dfProposal[1,"project_user"]) & dfProposal[1,"project_user"] != ""){
+          projectParams[["subtitle"]] = paste0(dfProposal[1,"user_lab"], " Lab - ", dfProposal[1,"project_user"])
+          projectParams[["subtitle"]] <- gsub("^ Lab - ", "", projectParams[["subtitle"]])
+
+      }
+
+      if (!is.na(dfProposal[1,"proposal_text"]) & dfProposal[1,"proposal_text"] != ""){
+          projectParams[["abstract"]] = dfProposal[1,"proposal_text"]
+
+      }
+  }
+}
+
+
+## Escape all special characters
+projectParams <- lapply(
+  projectParams, function(x)
+  #gsub("([.|()\\^{}+$*?]|\\[|\\])", "\\\\\1", x)
+  gsub("([.|()/\\^{}+$*?]|\\[|\\])", " ", x)
+)
+
+projectParams <- lapply(
+  projectParams, function(x)
+  #gsub("([.|()\\^{}+$*?]|\\[|\\])", "\\\\\1", x)
+  gsub("\\\n", " ", x)
+)
+
+
+if (is.null(projectParams$additionalParagraph)){
+    projectParams$additionalParagraph <- ""
+}
+
+
+
+# rojectParams$title <- "Title"
+# projectParams$abstract <- "This is the QC section."
+# rojectParams$subtitle <- "Abstract"
+
+```
+```{r, eval=TRUE, echo=F, results=FALSE, message = FALSE, warning = FALSE}
+tempDir <- "../../../../workdir/temp/"
+
+if (!dir.exists(tempDir)){
+  dir.create(tempDir, recursive = T)
+}
+
+# Create savings whitelist for this project - only variables defined in the main document and
+# Obio / OsC object should be carried between chapters
+
+whiteListWorkspace <- c(
+    ls(),
+    "whiteListWorkspace",
+    "db.pwd",
+    "Obio",
+    "OsC",
+    "shinyURL",
+    "shinyBasePath",
+    "urlString"
+)
+
+if (exists("whiteListWorkspace")){
+    rmVec <- ls()[!(ls() %in% whiteListWorkspace)]
+    rm(list = rmVec)
+}
+
+FN <- "../../../../workdir/temp/temp.workspace.RData"
+save.image(FN)
+```
+
+---
+title: '`r projectParams$title`'
+subtitle:  '`r projectParams$subtitle`'
+author:
+    - Stefan Boeing ^[The Francis Crick Institute Bioinformatics and Biostatistics Service, stefan.boeing@crick.ac.uk]
+date: 'Compiled: `r format(Sys.Date(), "%B %d, %Y")`'
+abstract: |
+    | `r projectParams$abstract`
+    |
+    | `r projectParams$additionalParagraph`
+
+---

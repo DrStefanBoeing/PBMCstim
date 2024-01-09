@@ -1,0 +1,3 @@
+sampleID	sampleName	sampleColor
+CTRL	CTRL	#000000
+STIM	STIM	#EC9F05

@@ -1,0 +1,86 @@
+---
+format:
+    html:
+        embed-rmd: true
+        output-ext: "htm"
+---
+
+## Saving and cleanup
+In this section we will determine an appropriate integration strategy.
+
+
+```{r, eval=T, echo=F, results=FALSE, message = FALSE, warning = FALSE}
+if (file.exists("renv.lock")){
+    renv::restore(prompt = FALSE)
+}
+
+FN <- "../../../../workdir/temp/temp.workspace.RData"
+if (file.exists(FN)){
+  load(FN)
+} else {
+  exit("No workspace found. Please run the previous step first and make sure it finished successfully.")
+}
+
+library(dplyr)
+```
+
+<!-- Set Parameters Module -->
+<!-- Set the chnkPrefix to make all chunks unique in the overall folder -->
+```{r, echo=T, eval=T, warning=FALSE}
+
+###############################################################################
+## Save integrated object                                                    ##
+file = paste0(
+    Obio@parameterList$localWorkDir,
+    Obio@parameterList$project_id,
+    ".SeuratV5.obj.Rds"
+)
+
+saveRDS(
+  object = OsC,
+  file = file
+)
+
+
+print("OsC object saved.")
+
+
+## Done                                                                      ##
+###############################################################################
+
+###############################################################################
+## Save old version seurat object                                            ##
+## The above step is the most time consuming. Saving the Obio and OsC object here allows
+source("save.biologic.robj.R")
+
+print("Obio Object saved.")
+
+save(OsC,
+    file = paste0(
+         Obio@parameterList$localWorkDir,
+         Obio@parameterList$project_id,
+        ".Seurat.Robj"
+     )
+)
+
+print("OsC Object saved.")
+
+## Done                                                                      ##
+###############################################################################
+
+###############################################################################
+## Save biologic object                                                      ##
+source("save.biologic.robj.R")
+
+##  Done                                                                     ##
+###############################################################################
+
+###############################################################################
+## Cleanup                                                                   ##
+
+tempDir <- "../../../../workdir/temp/"
+
+if (!dir.exists(tempDir)){
+  unlink(tempDir, recursive = T)
+}
+```

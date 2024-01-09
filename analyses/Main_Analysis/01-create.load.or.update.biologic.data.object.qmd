@@ -1,0 +1,677 @@
+---
+format:
+    html:
+        embed-rmd: true
+        output-ext: "htm"
+---
+
+<!-- Set Parameters Module -->
+<!-- Set the chnkPrefix to make all chunks unique in the overall folder -->
+
+```{r set_parameters_init, echo=TRUE, eval=TRUE, warning=FALSE}
+chnkPrefix <- "set.parameters."
+VersionPdfExt <- VersionPdfExt <- paste0(".",chnkPrefix,"V", gsub("-", "", Sys.Date()), ".pdf")
+
+if (!exists("upload.results.to.database")){
+    upload.results.to.database <- TRUE
+}
+
+if (file.exists("renv.lock")){
+    renv::restore(prompt = FALSE)
+}
+
+```
+
+```{r, eval=T, echo=F, results=FALSE, message = FALSE, warning = FALSE}
+if (file.exists("renv.lock")){
+    renv::restore(prompt = FALSE)
+}
+
+FN <- "../../../../workdir/temp/temp.workspace.RData"
+if (file.exists(FN)){
+  load(FN)
+} else {
+  exit("No workspace found. Please run the previous step first and make sure it finished successfully.")
+}
+
+library(dplyr)
+```
+
+
+## Data Preparation
+### Set Parameters
+```{r B_set_directories, echo=TRUE, eval=TRUE, warning=FALSE, results="asis"}
+###############################################################################
+##                                                                           ##
+
+if (dir.exists("/Volumes/babs/working/boeings/")){
+    hpc.mount <- "/Volumes/babs/working/boeings/"
+} else if (dir.exists("Y:/working/boeings/")){
+    hpc.mount <- "Y:/working/boeings/"
+} else if (dir.exists("/camp/stp/babs/working/boeings/")){
+    hpc.mount <- "/camp/stp/babs/working/boeings/"
+} else {
+    hpc.mount <- ""
+}
+
+
+
+## Loading the BABS password ##
+if (upload.results.to.database){
+    FN <- paste0(hpc.mount, "Projects/reference_data/pwd_folder/babs.txt")
+    dbTable <- read.delim(
+      FN,
+      header = F,
+      sep = "\t",
+      stringsAsFactors = F
+    )
+}
+db.pwd <- as.vector(dbTable[1,1])
+
+##                                                                           ##
+###############################################################################
+```
+
+
+### Load Design File
+```{r set_parameters_load_design, echo=TRUE, eval=TRUE, warning=FALSE, results="asis"}
+###############################################################################
+## Create biologic Metadata object                                           ##
+projectDir <- unlist(strsplit(getwd(), "scripts\\/"))[1]
+workdir <- paste0(projectDir, "workdir/")
+
+designDir <- unlist(strsplit(getwd(), "analyses\\/"))[1]
+designDir <- paste0(designDir, "design/")
+
+
+## Determine if a biologic object exists ##
+if (dir.exists("../../../../data/biologic_active_object/")){
+    nObj <- length(list.files("../../../../data/biologic_active_object/")[grep("bioLOGIC.Robj", list.files("../../../../data/biologic_active_object/"))])
+    if (nObj == 1){
+        biologicObjectExists <- TRUE
+    } else if (nObj > 1){
+        stop("There should only be one active biologic data object in ../../../../data/biologic_active_object/")
+    } else {
+        biologicObjectExists <- FALSE
+    }
+} else {
+    biologicObjectExists <- FALSE
+}
+
+if (biologicObjectExists){
+    source("load.biologic.robj.R")
+}
+
+## If the biologic object needs to be updated based on the design file, set this section to true
+
+## Load design file to create biologic object, update biologic object or to create design table.
+FN <- paste0(designDir, "sc.design.file.csv")
+
+    if (file.exists(FN)){
+        dfObio <- read.csv(FN, header = F, stringsAsFactors = F)
+    }
+
+    dfObio[is.na(dfObio)] <- ""
+
+    dfObio <- dfObio[dfObio[,1] != "", ]
+
+    dfObio <- data.frame(t(dfObio), stringsAsFactors = F)
+
+    names(dfObio) <- as.vector(t(dfObio[1,]))
+    dfObio <- dfObio[-1,]
+
+    for (i in 1:ncol(dfObio)){
+        pos <- grep("#", dfObio[,i], useBytes = TRUE)
+        if (length(pos) > 0){
+            dfObio[pos, i] <- ""
+        }
+    }
+
+
+###############################################################################
+###############################################################################
+
+# Switch to update biolgic object
+updateBiologicObject <- TRUE
+
+###############################################################################
+###############################################################################
+
+if (updateBiologicObject | !biologicObjectExists){
+
+    ###############################################################################
+    ## Create sampleDetail List                                                  ##
+
+    # type must be in c("TenX", "matrixFiles", "loomFiles", "hdf5Files")
+
+    sampleNameVec <- trimws(dfObio$sampleName)
+    sampleNameVec <- sampleNameVec[sampleNameVec != ""]
+
+    sampleDetailList <- list()
+
+    for (i in 1:length(sampleNameVec)){
+        sampleDetailList[[sampleNameVec[i]]] <- list(
+            "type" = as.vector(dfObio$type[i]),
+            "gene.column" =  as.numeric(dfObio$gene.column[i]), # default 2
+            "path" = as.vector(dfObio$path[i]),
+            "singleCellClusterParameter" = as.numeric(dfObio$singleCellClusterParameter[1]),
+            "singleCellSeuratMtCutoff" = as.numeric(dfObio$singleCellSeuratMtCutoff[i]),
+            "singleCellSeuratNpcs4PCA" = as.numeric(dfObio$singleCellSeuratNpcs4PCA[1]),
+            "SeuratNrnaMaxFeatures" = as.numeric(dfObio$SeuratNrnaMaxFeatures[i]),
+            "SeuratNrnaMinFeatures" = as.numeric(dfObio$SeuratNrnaMinFeatures[i]),
+            "limsId"= as.vector(dfObio$limsID[i]),
+            "singleCellChemistry" = NULL,
+            "singleCellCellrangerVersion" = NULL,
+            "machine" = NULL
+        )
+    }
+
+
+
+    ##                                                                           ##
+    ###############################################################################
+
+    ###############################################################################
+    ## dbDetailList                                                              ##
+    dbDetailList <- list(
+        "primDataDB" = as.vector(dfObio$primDataDB[1]),
+        "ref.cat.db" = as.vector(dfObio$ref.cat.db[1]),
+         "db.user" = as.vector(dfObio$db.user[1]),
+         "host" = as.vector(dfObio$host[1])
+    )
+    ## End dbDetailList                                                          ##
+    ###############################################################################
+
+    ###############################################################################
+    ## Project detail list                                                       ##
+    projectDetailList <- list(
+
+        "folder" = as.vector(dfObio$folder[1]),
+
+        "lab.categories.table" = as.vector(dfObio$lab.categories.table[1]), # default NULL
+        "sra.id.vector" = as.vector(dfObio$sra.id.vector[1]),
+        "gse.id.vector" = as.vector(dfObio$gse.id.vector[1]),
+        "lims.id" = as.vector(dfObio$lims.id[1]),
+        "experiment.type" = as.vector(dfObio$experiment.type[1]),
+        "species" = as.vector(dfObio$species[1]),
+        "release" = as.vector(dfObio$release[1]),
+
+        "project_id" = as.vector(dfObio$project_id[1]),
+        "labname" = as.vector(dfObio$labname[1]),
+
+        "timecourse.units" = as.vector(dfObio$timecourse.units[1]),
+        "count.table.headline" = as.vector(dfObio$count.table.headline[1]),
+        "count.table.sidelabel" = as.vector(dfObio$count.table.headline[1]),
+        "heamap.headline.text" = as.vector(dfObio$count.table.headline[1])
+    )
+    ## End project detail list                                                   ##
+    ###############################################################################
+
+    ###############################################################################
+    ## Project Parameters                                                        ##
+    documentationParams <- list(
+
+        "title" = as.vector(dfObio$title[1]),
+        "subtitle" =  as.vector(dfObio$subtitle[1]),
+        "abstract" = as.vector(dfObio$abstract[1])
+
+    )
+
+
+    ## Done Project Params                                                       ##
+    ###############################################################################
+
+
+    ###############################################################################
+    ## Project detail list                                                       ##
+    if (dfObio$vars.to.regress[1] == "" | toupper(dfObio$vars.to.regress[1]) == "NULL"){
+        vars.to.regress <- NULL
+    } else {
+
+        vars.to.regress = as.vector(dfObio$vars.to.regress)
+        vars.to.regress <- vars.to.regress[vars.to.regress != ""]
+
+    }
+
+    if (toupper(as.vector(dfObio$scIntegrationMethod[1])) == "SCT"){
+        intMethod = "SCT"
+    } else if (toupper(as.vector(dfObio$scIntegrationMethod[1])) == "STANDARD"){
+        intMethod = "RNA"
+    } else if (toupper(as.vector(dfObio$scIntegrationMethod[1])) == "RNA"){
+        intMethod = "RNA"
+    } else {
+        stop("No valid integration method provided")
+    }
+
+    scDetailList <- list(
+        "NtopGenes" =  as.numeric(dfObio$NtopGenes[1]),
+        "singleCellClusterParameter" = as.numeric(dfObio$singleCellClusterParameter[1]),
+        "singleCellClusterString" = paste0("integrated_snn_res.", as.numeric(dfObio$singleCellClusterParameter[1])),
+        "scIntegrationMethod" = intMethod, #"SCT", # "SCT" or "standard"
+        "scNintegrationFeatures" = as.numeric(dfObio$scNintegrationFeatures[1]),
+        "primReduction" = tolower(as.vector(dfObio$primReduction[1])),
+        "vars.to.regress" = vars.to.regress
+
+    )
+    ## End project detail list                                                   ##
+    ###############################################################################
+
+    ###############################################################################
+    ## Reference Table List                                                      ##
+    dfRefTab <- dfObio[,grep("referenceTableListDB", names(dfObio))]
+
+    referenceTableList = list()
+
+    if (ncol(dfRefTab) > 0){
+        for (i in 1:ncol(dfRefTab)){
+            referenceTableList[[as.vector(dfRefTab[1,i])]] <- as.vector(dfRefTab[2,i])
+
+        }
+    ## To be added: Check tables against database
+    }
+
+
+    ##############################################################################
+    ## Tables for signature enrichment                                          ##
+    dfRefTab <- dfObio[,grep("cellSignatureDBtable", names(dfObio))]
+
+    clusterSigEnrichmentList = list()
+
+    if (ncol(dfRefTab) > 0){
+        for (i in 1:ncol(dfRefTab)){
+            clusterSigEnrichmentList[[as.vector(dfRefTab[1,i])]] <- as.vector(dfRefTab[2,i])
+
+        }
+    ## To be added: Check tables against database
+    }
+
+
+    clusterSigEnrichmentList = list(
+        "Cell Type Signatures" = "mysigdb_sc_sig",
+        "Cell Type Signatures" = "cibersort_L22",
+        "GO-MF" = "mysigdb_c5_MF",
+        "Pathways" = "mysigdb_c2_1329_canonical_pathways",
+        "Hallmarks" = "mysigdb_h_hallmarks",
+        "Allen_Brain_Atlas" = "Allen_Brain_Atlas",
+        "Hallmarks" = "mysigdb_h_hallmarks"
+    )
+
+    ## Done                                                                      ##
+    ###############################################################################
+
+    # Species has to be "mus_musculus", "homo_sapiens", "danio_rerio"
+    # release-86, release-89
+
+    ## Create defaults ##
+    pos <- grep("debugReduce", names(dfObio))
+
+    if (!exists("debugReduce")){
+    if (length(pos) > 0){
+        if (dfObio$debugReduce[1] == "" | toupper(dfObio$debugReduce[1]) == "NULL") {
+             "debugReduce" <- NULL
+        }  else {
+            debugReduce <- as.numeric(dfObio$debugReduce[1])
+        }
+    } else {
+        debugReduce <- NULL
+    }
+    }
+}
+
+
+###############################################################################
+## Creation or updating of Obio data object                                  ##
+
+library(biologicSeqTools2)
+if (!biologicObjectExists){
+    Obio = new(
+        "bioLOGIC",
+        clusterSigEnrichmentList = clusterSigEnrichmentList,
+        documentationParams = documentationParams,
+        dbDetailList = dbDetailList,
+        projectDetailList = projectDetailList,
+        sampleDetailList = sampleDetailList,
+        referenceTableList = referenceTableList,
+        scDetailList = scDetailList,
+        parameterList = list(
+            "vars.to.regress" = vars.to.regress,
+            "debugReduce" = debugReduce, # Default NULL
+
+            "lab.categories.table" = projectDetailList$lab.categories.table, # default NULL
+            "folder" = projectDetailList$folder,
+            "sra.id.vector" = "",
+            "gse.id.vector" = "",
+            "addDmaps" = as.vector(dfObio$addDmaps[1]),
+
+           "lims.id"= as.vector(dfObio$asf.id[1]),
+            "asf.id" = as.vector(dfObio$asf.id[1]),
+
+            "machine" = NULL,
+            "experiment.type" = projectDetailList$experiment.type,
+            "species" = projectDetailList$species,
+            "release" = projectDetailList$release,
+            "project_id" = projectDetailList$project_id,
+            "labname" = projectDetailList$labname,
+            "db.user" =  dbDetailList$db.user,
+            "host" = dbDetailList$host,
+            "timecourse.units" = "hrs",
+            "count.table.headline" = "lg10 Expr for all Samples",
+            "count.table.sidelabel" = "lg10 Expr",
+            "heamap.headline.text" = "Heatmap: Row-averaged Expr",
+            "loadR" = "module purge;source /camp/stp/babs/working/software/modulepath_new_software_tree_2018-08-13;module load pandoc/2.2.3.2-foss-2016b;ml R/3.6.0-foss-2016b-BABS;R;",
+            "pathToSeqStorageFolder" = NULL,
+            "matrixFiles" = NULL,
+            "loomFiles" = NULL,
+            "addFullTPMtable" = FALSE,
+            "hpcMount" = "",
+            "parallelProcessing" = FALSE,
+            "timeseries" = FALSE,
+            "NtopGenes" =  scDetailList$NtopGenes,
+            "singleCellClusterParameter" = as.numeric(dfObio$singleCellClusterParameter[1]),
+            "singleCellClusterString" = paste0("integrated_snn_res.", as.vector(dfObio$singleCellClusterParameter[1])),
+            #"singleCellRead10XgeneColumn" = 1, # default is 2
+            #"singleCellPercExpressedMinCutOff" = 10,
+            #"singleCellTranscriptome"="GRCh38",
+            #"singleCellChemistry" = NULL,
+            #"singleCellCellrangerVersion" = NULL,
+            #"singleCellSeuratMtCutoff" = singleCellSeuratMtCutoff,
+            "singleCellSeuratNpcs4PCA" = as.numeric(dfObio$singleCellSeuratNpcs4PCA[1]),
+            "scIntegrationMethod" = as.vector(dfObio$scIntegrationMethod[1]), # "SCT" or "standard"
+            #"scNintegrationFeatures" = scDetailList$scNintegrationFeatures,
+            #"SeuratNrnaMaxFeatures" = SeuratNrnaMaxFeatures,
+            #"SeuratNrnaMinFeatures" = SeuratNrnaMinFeatures,
+            #"primReduction" = "umap",
+            #"qcReports" = list(),
+            "catRefFile" = as.vector(dfObio$catRefFile[1]),
+            referenceTableList = referenceTableList
+
+        )
+    )
+} else if (updateBiologicObject) {
+
+        Obio@clusterSigEnrichmentList = clusterSigEnrichmentList
+        Obio@documentationParams = documentationParams
+        Obio@dbDetailList = dbDetailList
+        Obio@projectDetailList = projectDetailList
+        Obio@sampleDetailList = sampleDetailList
+        Obio@referenceTableList = referenceTableList
+        Obio@scDetailList = scDetailList
+        Obio@parameterList = list(
+            "vars.to.regress" = vars.to.regress,
+            "debugReduce" = debugReduce, # Default NULL
+
+            "lab.categories.table" = projectDetailList$lab.categories.table, # default NULL
+            "folder" = projectDetailList$folder,
+            "sra.id.vector" = "",
+            "gse.id.vector" = "",
+            "addDmaps" = as.vector(dfObio$addDmaps[1]),
+
+           "lims.id"= as.vector(dfObio$asf.id[1]),
+            "asf.id" = as.vector(dfObio$asf.id[1]),
+
+            "machine" = NULL,
+            "experiment.type" = projectDetailList$experiment.type,
+            "species" = projectDetailList$species,
+            "release" = projectDetailList$release,
+            "project_id" = projectDetailList$project_id,
+            "labname" = projectDetailList$labname,
+            "db.user" =  dbDetailList$db.user,
+            "host" = dbDetailList$host,
+            "timecourse.units" = "hrs",
+            "count.table.headline" = "lg10 Expr for all Samples",
+            "count.table.sidelabel" = "lg10 Expr",
+            "heamap.headline.text" = "Heatmap: Row-averaged Expr",
+            "loadR" = "module purge;source /camp/stp/babs/working/software/modulepath_new_software_tree_2018-08-13;module load pandoc/2.2.3.2-foss-2016b;ml R/3.6.0-foss-2016b-BABS;R;",
+            "pathToSeqStorageFolder" = NULL,
+            "matrixFiles" = NULL,
+            "loomFiles" = NULL,
+            "addFullTPMtable" = FALSE,
+            "hpcMount" = "",
+            "parallelProcessing" = FALSE,
+            "timeseries" = FALSE,
+            "NtopGenes" =  scDetailList$NtopGenes,
+            "singleCellClusterParameter" = as.numeric(dfObio$singleCellClusterParameter[1]),
+            "singleCellClusterString" = paste0("integrated_snn_res.", as.vector(dfObio$singleCellClusterParameter[1])),
+            #"singleCellRead10XgeneColumn" = 1, # default is 2
+            #"singleCellPercExpressedMinCutOff" = 10,
+            #"singleCellTranscriptome"="GRCh38",
+            #"singleCellChemistry" = NULL,
+            #"singleCellCellrangerVersion" = NULL,
+            #"singleCellSeuratMtCutoff" = singleCellSeuratMtCutoff,
+            "singleCellSeuratNpcs4PCA" = as.numeric(dfObio$singleCellSeuratNpcs4PCA[1]),
+            "scIntegrationMethod" = as.vector(dfObio$scIntegrationMethod[1]), # "SCT" or "standard"
+            #"scNintegrationFeatures" = scDetailList$scNintegrationFeatures,
+            #"SeuratNrnaMaxFeatures" = SeuratNrnaMaxFeatures,
+            #"SeuratNrnaMinFeatures" = SeuratNrnaMinFeatures,
+            #"primReduction" = "umap",
+            #"qcReports" = list(),
+            "catRefFile" = as.vector(dfObio$catRefFile[1]),
+            referenceTableList = referenceTableList
+        )
+}
+
+
+Obio <- biologicSeqTools2::setMountingPoint(Obio)
+Obio <- biologicSeqTools2::setAnalysisPaths(Obio)
+Obio <- biologicSeqTools2::setCrickGenomeAndGeneNameTable(Obio)
+Obio <- biologicSeqTools2::createAnalysisFolders(
+    Obio
+)
+Obio <- biologicSeqTools2::setDataBaseParameters(Obio)
+
+
+Obio@parameterList[["html_local_dir"]] <- paste0(Obio@parameterList$folder,"html_local", "/")
+if (!dir.exists(Obio@parameterList$html_local_dir)){
+    dir.create(Obio@parameterList$html_local_dir)
+}
+
+## Create outputfolders ##
+Obio@parameterList[["reportFigDir"]] <- paste0(Obio@parameterList$folder,"html_local", "/report_figures/")
+
+if (!dir.exists(Obio@parameterList$reportFigDir)){
+    dir.create(Obio@parameterList$reportFigDir)
+}
+
+## Create outputfolders II ##
+Obio@parameterList[["reportTableDir"]] <- paste0(Obio@parameterList$folder, "html_local", "/report_tables/")
+
+if (!dir.exists(Obio@parameterList$reportFigDir)){
+    dir.create(Obio@parameterList$reportFigDir)
+}
+
+Obio@parameterList[["reportFigDir"]] <- paste0(Obio@parameterList$html_local, "report_figures/")
+pdfTemp <- paste0(Obio@parameterList$reportFigDir, "temp.pdf")
+
+
+if (!dir.exists(Obio@parameterList$reportFigDir)){
+    dir.create(Obio@parameterList$reportFigDir)
+}
+
+## Create data dir
+Obio@parameterList[["data_dir"]] <- paste0(Obio@parameterList$localWorkDir, "data/")
+
+if (!dir.exists(Obio@parameterList$data_dir)){
+    dir.create(Obio@parameterList$data_dir)
+}
+
+
+pos <- grep("^host$", names(Obio@parameterList))
+if (length(pos) ==0 ){
+    Obio@parameterList$host <- NULL
+
+    if (is.null(Obio@dbDetailList)){
+        Obio@dbDetailList = list("host" = NULL)
+    }
+
+}
+
+if (!is.null(Obio@parameterList$host)){
+    if (Obio@parameterList$host == "10.27.241.234"){
+        urlString <- "biologic.thecrick.org"
+    } else {
+        urlString <- "biologic.crick.ac.uk"
+    }
+} else {
+    urlString <- ""
+}
+
+## Create shiny path for figure outputs ##
+
+shinyURL <- paste0(
+    "https://bioinformatics.crick.ac.uk/shiny/users/boeings/",
+    Obio@parameterList$project_id,
+    "_app/"
+)
+##                                                                           ##
+###############################################################################
+
+
+pos <- grep("^host$", names(Obio@parameterList))
+if (length(pos) ==0 ){
+    Obio@parameterList$host <- NULL
+
+    if (is.null(Obio@dbDetailList)){
+        Obio@dbDetailList = list("host" = NULL)
+    }
+
+}
+
+if (!is.null(Obio@parameterList$host)){
+    if (Obio@parameterList$host == "10.27.241.234"){
+        urlString <- "biologic.thecrick.org"
+    } else {
+        urlString <- "biologic.crick.ac.uk"
+    }
+} else {
+    urlString <- ""
+}
+
+
+##                                                                           ##
+###############################################################################
+```
+
+
+```{r set_parameters_create_design_table, echo=TRUE, eval=TRUE, warning=FALSE, results="asis"}
+selVec <- c(
+    "sampleName",
+    names(dfObio)[grep("META_", toupper(names(dfObio)))],
+    dfObio$limsID,
+    "type",
+    "singleCellSeuratMtCutoff",
+    "SeuratNrnaMinFeatures",
+    "SeuratNrnaMaxFeatures"
+)
+
+selVec <- selVec[selVec %in% names(dfObio)]
+dfDesign <- unique(dfObio[,selVec])
+dfDesign <- data.frame(t(dfDesign))
+orderVec <- names(dfDesign)
+
+dfDesign[["Column"]] <- row.names(dfDesign)
+dfDesign <- dfDesign[,c("Column", orderVec)]
+
+if (length(grep("sampleName", row.names(dfDesign))) > 0){
+    names(dfDesign) <- as.vector(t(dfDesign["sampleName",]))
+    pos <- grep("sampleName", row.names(dfDesign))
+    dfDesign <- dfDesign[-pos, ] 
+}
+
+## Remove empty columns ##
+rmVec <- as.vector(NULL, mode = "numeric")
+for (i in 1:ncol(dfDesign)){
+    tempVec <- unique(dfDesign[,i])
+    if (length(tempVec) == 1 & tempVec[1] == ""){
+        rmVec <- c(
+            rmVec, 
+            i
+        )
+    }
+}
+
+if (length(rmVec) > 0){
+    dfDesign <- dfDesign[,-rmVec]
+}
+
+
+#tabDownloadLink <- paste0("The quality measures table can be downloaded [here](",FNrel,")")
+
+if (!exists("tableCount")){
+    tableCount <- 1
+}
+
+tabLegend = paste0(
+    "**Table: ",tableCount,"** Sample definition table"
+)
+
+tableCount <- tableCount + 1
+
+chnkVec <- paste0(
+        #"#### ", names(dtList),
+        "\n```{r sample_defenition_table, results='asis', echo=F, eval=TRUE, warning=FALSE, fig.cap='",
+        tabLegend,"'}\n",
+        "\n",
+        "\n DT::datatable(dfDesign,rownames = FALSE,  escape = FALSE)",
+        "\n cat(  '\n')",
+        "\n\n\n```\n"   
+    )
+    
+
+```
+
+## Sample Definition Table
+:::
+```{r render_sample_Table, echo=TRUE, eval=TRUE, warning=FALSE, results="asis"}
+
+cat(paste(knitr::knit(text = chnkVec, quiet = T), collapse = '\n'))
+
+```
+:::
+
+## Display Parameter Table
+```{r parameter_table, echo=TRUE, eval=TRUE, warning=FALSE, results="asis"}
+
+
+tabLegend = paste0(
+    "**Table: ",tableCount,"** Analysis Parameter Table"
+)
+
+tableCount <- tableCount + 1
+dfObio <- data.frame(t(dfObio))
+
+chnkVec <- paste0(
+        # "### ", names(dtList),
+        "\n```{r analysis_parameter_table, results='asis', echo=F, eval=TRUE, warning=FALSE, fig.cap='",
+        tabLegend,"'}\n",
+        "\n",
+        "\n DT::datatable(dfObio,rownames = FALSE,  escape = FALSE)",
+        "\n cat(  '\n')",
+        "\n\n\n```\n"   
+    )
+dfObio <- data.frame(t(dfObio))
+
+```
+
+## Sample Definition Table
+:::
+```{r render_parameter_Table, echo=TRUE, eval=TRUE, warning=FALSE, results="asis"}
+cat(paste(knitr::knit(text = chnkVec, quiet = T), collapse = '\n'))
+```
+:::
+
+```{r, eval=TRUE, echo=F, results=FALSE, message = FALSE, warning = FALSE}
+
+
+tempDir <- "../../../../workdir/temp/"
+
+if (!dir.exists(tempDir)){
+  dir.create(tempDir, recursive = T)
+}
+
+if (exists("whiteListWorkspace")){
+    rmVec <- ls()[!(ls() %in% whiteListWorkspace)]
+    rm(list = rmVec)
+}
+FN <- "../../../../workdir/temp/temp.workspace.RData"
+save.image(FN)
+```

@@ -1,0 +1,138 @@
+---
+title: Load Data and Set Parameters
+---
+
+# Load data objects
+
+```{r, eval=TRUE, echo=T, results=T}
+
+
+VersionPdfExt <- paste0(".V", gsub("-", "", Sys.Date()), ".pdf")
+rasterDpi <- 400
+calculateLRTfromScratch <- TRUE
+
+###############################################################################
+## Load bioLOGIC object                                                      ##
+source("load.biologic.robj.R")
+
+## Make sure paths are set correctly in the Obio object
+library(dplyr)
+Obio <- Obio %>%
+biologicSeqTools2::setMountingPoint()  %>%
+biologicSeqTools2::setAnalysisPaths() %>%
+biologicSeqTools2::setCrickGenomeAndGeneNameTable() %>%
+biologicSeqTools2::createAnalysisFolders() %>%
+biologicSeqTools2::setDataBaseParameters()
+
+##                                                                           ##
+###############################################################################
+
+###############################################################################
+## Load Seurat object                                                        ##
+SeuratFN <- paste0(
+Obio@parameterList$localWorkDir,
+Obio@parameterList$project_id,
+".Seurat.Robj"
+)
+
+load(SeuratFN)
+
+##                                                                           ##
+###############################################################################
+
+###############################################################################
+## Subset using sketch                                                       ##
+
+##                                                                           ##
+###############################################################################
+
+###############################################################################
+## Retrieve database password                                                ##
+if (dir.exists("/Volumes/babs/working/boeings/")){
+hpc.mount <- "/Volumes/babs/working/boeings/"
+} else if (dir.exists("Y:/working/boeings/")){
+hpc.mount <- "Y:/working/boeings/"
+} else if (dir.exists("/camp/stp/babs/working/boeings/")){
+hpc.mount <- "/camp/stp/babs/working/boeings/"
+} else {
+hpc.mount <- ""
+}
+
+FN <- paste0(hpc.mount, "Projects/reference_data/pwd_folder/babs.txt")
+dbTable <- read.delim(
+FN,
+header = F,
+sep = "\t",
+stringsAsFactors = F
+)
+#}
+db.pwd <- as.vector(dbTable[1,1])
+
+## Done                                                                      ##
+###############################################################################
+
+###############################################################################
+##  Set variables                                                            ##
+
+# Plotting parameters
+figureCount <- 1
+legendDotSize <- 5
+
+## Define project ID ##
+project_id <- Obio@parameterList$project_id
+
+
+## Set directory for report tables
+reportTableDir <- Obio@parameterList$reportTableDir
+reportFigDir <- Obio@parameterList$reportFigDir
+
+localWorkDir <- Obio@parameterList$localWorkDir
+
+## Create url string
+if (Obio@parameterList$host == "10.27.241.234"){
+urlString <- "biologic.thecrick.org"
+} else {
+urlString <- "biologic.crick.ac.uk"
+}
+
+shinyBaseUrl <- "https://bioinformatics.crick.ac.uk/shiny/users/boeings/"
+
+shinyURL <- paste0(
+shinyBaseUrl,
+project_id,
+"_app/"
+)
+
+## Set file paths ##
+baseFN <- paste0(
+project_id,
+".LRT.table.xlsx"
+)
+
+FNrel <- paste0("report_tables/", baseFN)
+
+outPutFN <- paste0(
+reportTableDir,
+baseFN
+)
+
+tableLink <- paste0(
+'https://',
+urlString,
+'/mdata/',project_id, '/html/',
+FNrel
+)
+
+tableString <- paste0(
+'An Excel table with the LRT results can be downloaded ',
+tableLink
+)
+
+tableString <- paste0(
+' An Excel table with the LRT results can be downloaded <a href="',tableLink,'" target="_blank">here</a>. '
+)
+
+
+##  Set variables                                                            ##
+###############################################################################
+```
